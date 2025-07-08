@@ -1,0 +1,24 @@
+{
+  "name": "meeting-attendance-app",
+  "version": "1.0.0",
+  "description": "Online Meeting Attendance System for Document Acknowledgement",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "attendance",
+    "meeting",
+    "acknowledgement",
+    "online",
+    "vercel",
+    "signature"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
