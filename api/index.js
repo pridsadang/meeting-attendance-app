@@ -15,7 +15,7 @@ const DATA_FILE = path.join('/tmp', 'data.json');
 // CORS configuration:
 // For development, allow all origins: app.use(cors());
 // For production, specify your frontend domain:
-// const allowedOrigins = ['https://your-frontend-app.vercel.app']; // Replace with your actual Vercel frontend URL
+// const allowedOrigins = ['https://meeting-attendance-app-1zu8.vercel.app/']; // Replace with your actual Vercel frontend URL
 // app.use(cors({
 //     origin: function (origin, callback) {
 //         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
