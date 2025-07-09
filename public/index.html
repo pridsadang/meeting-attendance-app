@@ -294,6 +294,21 @@
             margin-top: 10px;
             display: none;
         }
+        .admin-save-btn {
+            background-color: #f97316; /* สีส้ม */
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px; /* เว้นระยะจากปุ่มก่อนหน้า */
+            width: 100%;
+        }
+        .admin-save-btn:hover {
+            background-color: #ea580c; /* สีส้มเข้มขึ้นเมื่อโฮเวอร์ */
+        }
         @media (max-width: 768px) {
             .form-row, .form-row-3 {
                 grid-template-columns: 1fr;
@@ -408,9 +423,12 @@
                 </div>
         </div>
 
-        <button class="save-btn" onclick="saveData()">💾 บันทึกข้อมูล</button>
+        <button class="save-btn" onclick="saveData(false)">💾 บันทึกข้อมูล (ผู้ใช้)</button>
         <div id="saveStatus" class="save-status"></div>
         <button class="export-btn" onclick="exportToPDF()">📄 Export เป็น PDF</button>
+
+        <button class="admin-save-btn" onclick="saveData(true)" style="display: none;">💾 บันทึกการเปลี่ยนแปลง (Admin)</button>
+        <div id="adminSaveStatus" class="save-status" style="display: none;"></div>
     </div>
 
     <script>
@@ -430,12 +448,12 @@
 
         let participantData = {};
         const ADMIN_PASSWORD = 'P@ssw0rd'; 
-        // *** สำคัญ: เปลี่ยนค่านี้เป็น URL ของ Backend API ที่คุณ Deploy บน Vercel หรือที่อื่น ***
+        // *** สำคัญ: เปลี่ยนค่านี้เป็น URL ของ Backend API ที่คุณ Deploy บน Vercel ***
         // ตัวอย่าง: 'https://your-project-name.vercel.app/api'
-        const API_BASE_URL = 'https://meeting-attendance-app-1zu8.vercel.app/api'; 
+        const API_BASE_URL = 'http://localhost:3000/api'; 
 
         // Data persistence functions
-        async function saveData() {
+        async function saveData(isManualAdminSave = false) { // เพิ่ม parameter เพื่อระบุว่าเป็นการบันทึกด้วยปุ่ม Admin หรือไม่
             try {
                 const formData = {
                     documentInfo: {
@@ -464,18 +482,29 @@
                 });
 
                 if (response.ok) {
-                    showSaveStatus('success', 'บันทึกข้อมูลสำเร็จ! ✅');
-                    setTimeout(() => {
-                        hideSaveStatus();
-                    }, 3000);
+                    if (isManualAdminSave) { // ใช้สถานะสำหรับ Admin หากเป็นการบันทึกด้วยปุ่ม Admin
+                        showSaveStatus('success', 'บันทึกการเปลี่ยนแปลงสำเร็จ! ✅', 'adminSaveStatus');
+                        setTimeout(() => { hideSaveStatus('adminSaveStatus'); }, 3000);
+                    } else { // ใช้สถานะปกติสำหรับผู้ใช้หรือ Auto-save
+                        showSaveStatus('success', 'บันทึกข้อมูลสำเร็จ! ✅');
+                        setTimeout(() => { hideSaveStatus(); }, 3000);
+                    }
                 } else {
                     const errorData = await response.json();
-                    showSaveStatus('error', `เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${errorData.message || response.statusText} ❌`);
+                    if (isManualAdminSave) {
+                        showSaveStatus('error', `เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${errorData.message || response.statusText} ❌`, 'adminSaveStatus');
+                    } else {
+                        showSaveStatus('error', `เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${errorData.message || response.statusText} ❌`);
+                    }
                 }
                 
             } catch (error) {
                 console.error('Error saving data:', error);
-                showSaveStatus('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล! ❌');
+                if (isManualAdminSave) {
+                    showSaveStatus('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล! ❌', 'adminSaveStatus');
+                } else {
+                    showSaveStatus('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล! ❌');
+                }
             }
         }
 
@@ -508,7 +537,7 @@
                     
                     console.log('Data loaded successfully from server');
                 } else if (response.status === 404) {
-                    console.log('No saved data found on server. Setting default values.');
+                    console.log('No data found in Firestore. Setting default values.');
                     setDefaultValues();
                 } else {
                     console.error('Failed to load data from server:', response.status, response.statusText);
@@ -567,21 +596,26 @@
             loadParticipantData(); 
         }
 
-        function showSaveStatus(type, message) {
-            const statusDiv = document.getElementById('saveStatus');
+        function showSaveStatus(type, message, statusDivId = 'saveStatus') { // รับ ID ของ div สถานะเข้ามา
+            const statusDiv = document.getElementById(statusDivId);
             statusDiv.className = `save-status ${type}`;
             statusDiv.textContent = message;
             statusDiv.style.display = 'block';
         }
 
-        function hideSaveStatus() {
-            const statusDiv = document.getElementById('saveStatus');
+        function hideSaveStatus(statusDivId = 'saveStatus') { // รับ ID ของ div สถานะเข้ามา
+            const statusDiv = document.getElementById(statusDivId);
             statusDiv.style.display = 'none';
         }
 
         // Auto-save function
         function autoSave() {
-            saveData();
+            // Auto-save จะไม่มีผลหาก Admin กำลังแก้ไขข้อมูลเอกสารหลักอยู่ และจะรอให้กดปุ่มบันทึก Admin แทน
+            // หรือถ้าจะให้ Auto-save ทำงานใน Admin mode ด้วย ก็ใช้ saveData() ธรรมดาไปเลย
+            // แต่เพื่อไม่ให้เกิดการบันทึกทับเมื่อ Admin ยังไม่พร้อมกด save เอง:
+            // if (!isAdminMode) {
+                saveData(false); // เรียกใช้ saveData โดยระบุว่าไม่ใช่การบันทึกด้วยปุ่ม Admin
+            // }
         }
 
         // Auto-save every 30 seconds
@@ -635,15 +669,23 @@
             isAdminMode = !isAdminMode;
             const btn = document.querySelector('.admin-toggle');
             const adminFields = document.querySelectorAll('#requestDate, #dueDate, #documentName, #documentType, #documentNumber, #version, #effectiveDate, #hardCopy, #softCopy, #edms, #other');
-            
+            const adminSaveBtn = document.querySelector('.admin-save-btn'); // อ้างอิงปุ่ม Admin Save
+            const adminSaveStatusDiv = document.getElementById('adminSaveStatus'); // อ้างอิง div สถานะ Admin
+
             if (isAdminMode) {
                 btn.textContent = '🔒 Admin Mode';
                 btn.classList.add('admin-mode');
                 adminFields.forEach(field => field.disabled = false);
+                adminSaveBtn.style.display = 'block'; // แสดงปุ่มเมื่อเข้า Admin Mode
+                adminSaveStatusDiv.style.display = 'block'; // แสดงสถานะสำหรับ Admin
             } else {
                 btn.textContent = '🔓 User Mode';
                 btn.classList.remove('admin-mode');
                 adminFields.forEach(field => field.disabled = true);
+                adminSaveBtn.style.display = 'none'; // ซ่อนปุ่มเมื่อออก Admin Mode
+                adminSaveStatusDiv.style.display = 'none'; // ซ่อนสถานะสำหรับ Admin
+                // เมื่อออกจาก Admin mode ให้บันทึกข้อมูลล่าสุดเสมอ (เผื่อ Admin ลืมกดบันทึก)
+                saveData(true); // บันทึกในฐานะ Admin Save
             }
         }
 
@@ -749,7 +791,7 @@
                 participantData[index] = {};
             }
             participantData[index][field] = value;
-            setTimeout(autoSave, 1000);
+            saveData(false); // การเปลี่ยนแปลงของผู้ใช้ (ผู้เข้าร่วม) จะบันทึกแบบ auto-save
         }
 
         function clearSignature(index) {
@@ -769,7 +811,7 @@
                 delete participantData[index].date;
                 delete participantData[index].signature;
             }
-            setTimeout(autoSave, 1000);
+            saveData(false); // การเปลี่ยนแปลงของผู้ใช้ (ผู้เข้าร่วม) จะบันทึกแบบ auto-save
         }
 
         function exportToPDF() {
@@ -872,9 +914,10 @@
             const formInputs = document.querySelectorAll('#requestDate, #dueDate, #documentName, #documentType, #documentNumber, #version, #effectiveDate, #hardCopy, #softCopy, #edms, #other');
             formInputs.forEach(input => {
                 input.addEventListener('change', () => {
-                    if (isAdminMode) {
-                        setTimeout(autoSave, 1000);
-                    }
+                    // ไม่ต้อง auto-save สำหรับฟิลด์ admin mode เพื่อรอให้กดปุ่มบันทึกเอง
+                    // if (isAdminMode) {
+                    //     setTimeout(autoSave, 1000);
+                    // }
                 });
             });
         });
